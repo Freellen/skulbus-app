@@ -37,33 +37,47 @@ class _GoogleMapPageState extends State<GoogleMapPage> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        body: currentPosition == null
-            ? const Center(child: CircularProgressIndicator())
-            : GoogleMap(
-                initialCameraPosition: const CameraPosition(
-                  target: googlePlex,
-                  zoom: 13,
+        body: Stack(
+          children: [
+            currentPosition == null
+              ? const Center(child: CircularProgressIndicator())
+              : GoogleMap(
+                  initialCameraPosition: const CameraPosition(
+                    target: googlePlex,
+                    zoom: 13,
+                  ),
+                  markers: {
+                    Marker(
+                      markerId: const MarkerId('currentLocation'),
+                      icon: BitmapDescriptor.defaultMarker,
+                      position: currentPosition!,
+                    ),
+                    const Marker(
+                      markerId: MarkerId('sourceLocation'),
+                      icon: BitmapDescriptor.defaultMarker,
+                      position: googlePlex,
+                    ),
+                    const Marker(
+                      markerId: MarkerId('destinationLocation'),
+                      icon: BitmapDescriptor.defaultMarker,
+                      position: mountainView,
+                    )
+                  },
+                  polylines: Set<Polyline>.of(polylines.values),
                 ),
-                markers: {
-                  Marker(
-                    markerId: const MarkerId('currentLocation'),
-                    icon: BitmapDescriptor.defaultMarker,
-                    position: currentPosition!,
+                Align(
+                  alignment: Alignment.bottomCenter,
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: LocationCard(
+                      address: '8 Chaniza St, Dar es Salaam, Tanzania',
+                      lastUpdated: 'Now',
+                    ),
                   ),
-                  const Marker(
-                    markerId: MarkerId('sourceLocation'),
-                    icon: BitmapDescriptor.defaultMarker,
-                    position: googlePlex,
-                  ),
-                  const Marker(
-                    markerId: MarkerId('destinationLocation'),
-                    icon: BitmapDescriptor.defaultMarker,
-                    position: mountainView,
-                  )
-                },
-                polylines: Set<Polyline>.of(polylines.values),
-              ),
-      );
+                ),
+              ],
+            ),
+          );
 
   Future<void> fetchLocationUpdates() async {
     bool serviceEnabled;
@@ -128,5 +142,102 @@ class _GoogleMapPageState extends State<GoogleMapPage> {
     );
 
     setState(() => polylines[id] = polyline);
+  }
+}
+
+class LocationCard extends StatelessWidget {
+  final String address;
+  final String lastUpdated;
+
+  const LocationCard({
+    Key? key,
+    required this.address,
+    required this.lastUpdated,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.all(16.0),
+      decoration: BoxDecoration(
+        color: Colors.black87,
+        borderRadius: BorderRadius.circular(16.0),
+      ),
+      width: double.infinity,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.phone_android, color: Colors.blue, size: 30),
+              SizedBox(width: 10),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Enter the Bus',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    address,
+                    style: TextStyle(color: Colors.white70),
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    'Timestamp: $lastUpdated',
+                    style: TextStyle(color: Colors.white70),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    'Exit the Bus',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    address,
+                    style: TextStyle(color: Colors.white70),
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    'Timestamp: $lastUpdated',
+                    style: TextStyle(color: Colors.white70),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          SizedBox(height: 20),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              Column(
+                children: [
+                  Icon(Icons.refresh, color: Colors.white),
+                  SizedBox(height: 4),
+                  Text('Refresh', style: TextStyle(color: Colors.white)),
+                ],
+              ),
+              Column(
+                children: [
+                  Icon(Icons.punch_clock, color: Colors.white),
+                  SizedBox(height: 4),
+                  Text('History', style: TextStyle(color: Colors.white)),
+                ],
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 }
