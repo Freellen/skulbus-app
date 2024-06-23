@@ -1,13 +1,15 @@
-import 'dart:async';
-
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_polyline_points/flutter_polyline_points.dart';
-import 'package:google_map_app/constants.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:location/location.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
+
+import 'print_shared_preferences.dart'; // Add this import
 
 class GoogleMapPage extends StatefulWidget {
-  const GoogleMapPage({super.key});
+  const GoogleMapPage({Key? key}) : super(key: key);
 
   @override
   State<GoogleMapPage> createState() => _GoogleMapPageState();
@@ -15,79 +17,142 @@ class GoogleMapPage extends StatefulWidget {
 
 class _GoogleMapPageState extends State<GoogleMapPage> {
   final locationController = Location();
-
-  static const googlePlex = LatLng(37.4223, -122.0848);
-  static const mountainView = LatLng(37.3861, -122.0839);
-
+  LatLng? googlePlex;
+  LatLng? mountainView;
   LatLng? currentPosition;
   Map<PolylineId, Polyline> polylines = {};
+  String? authToken; // Variable to hold the token
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance
-        .addPostFrameCallback((_) async => await initializeMap());
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await initializeMap();
+      await printSharedPreferencesContent(); // Print SharedPreferences content
+    });
   }
 
   Future<void> initializeMap() async {
-    await fetchLocationUpdates();
-    final coordinates = await fetchPolylinePoints();
-    generatePolyLineFromPoints(coordinates);
+    final token = await _retrieveToken();
+    if (token != null) {
+      setState(() {
+        authToken = token; // Save the token to display in the UI
+      });
+      await fetchCoordinates(token);
+      if (googlePlex != null && mountainView != null) {
+        await fetchLocationUpdates();
+        final coordinates = await fetchPolylinePoints();
+        generatePolyLineFromPoints(coordinates);
+      }
+    } else {
+      debugPrint('Authorization token not found');
+    }
+  }
+
+  Future<String?> _retrieveToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('authToken');
+  }
+
+  Future<void> fetchCoordinates(String token) async {
+    final url = 'http://10.0.2.2:8000/skulbus_api/api/user/';
+    try {
+      final response = await http.get(
+        Uri.parse(url),
+        headers: {
+          'Authorization': 'Token $token',
+        },
+      );
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data.isNotEmpty) {
+          setState(() {
+            googlePlex = LatLng(
+              double.parse(data[0]['start_latitude']),
+              double.parse(data[0]['start_longitude']),
+            );
+            mountainView = LatLng(
+              double.parse(data[0]['end_latitude']),
+              double.parse(data[0]['end_longitude']),
+            );
+          });
+        } else {
+          debugPrint('No data found');
+        }
+      } else {
+        debugPrint('Failed to load coordinates');
+      }
+    } catch (e) {
+      debugPrint('Error fetching coordinates: $e');
+    }
   }
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        body: Stack(
-          children: [
-            currentPosition == null
-              ? const Center(child: CircularProgressIndicator())
-              : GoogleMap(
-                  initialCameraPosition: const CameraPosition(
-                    target: googlePlex,
-                    zoom: 13,
-                  ),
-                  markers: {
-                    Marker(
-                      markerId: const MarkerId('currentLocation'),
-                      icon: BitmapDescriptor.defaultMarker,
-                      position: currentPosition!,
-                    ),
-                    const Marker(
-                      markerId: MarkerId('sourceLocation'),
-                      icon: BitmapDescriptor.defaultMarker,
-                      position: googlePlex,
-                    ),
-                    const Marker(
-                      markerId: MarkerId('destinationLocation'),
-                      icon: BitmapDescriptor.defaultMarker,
-                      position: mountainView,
-                    )
-                  },
-                  polylines: Set<Polyline>.of(polylines.values),
+    appBar: AppBar(
+      title: Text('Google Map'),
+    ),
+    body: Stack(
+      children: [
+        googlePlex == null || mountainView == null || currentPosition == null
+            ? const Center(child: CircularProgressIndicator())
+            : GoogleMap(
+          initialCameraPosition: CameraPosition(
+            target: googlePlex!,
+            zoom: 13,
+          ),
+          markers: {
+            Marker(
+              markerId: const MarkerId('currentLocation'),
+              icon: BitmapDescriptor.defaultMarker,
+              position: currentPosition!,
+            ),
+            Marker(
+              markerId: const MarkerId('sourceLocation'),
+              icon: BitmapDescriptor.defaultMarker,
+              position: googlePlex!,
+            ),
+            Marker(
+              markerId: const MarkerId('destinationLocation'),
+              icon: BitmapDescriptor.defaultMarker,
+              position: mountainView!,
+            ),
+          },
+          polylines: Set<Polyline>.of(polylines.values),
+        ),
+        Align(
+          alignment: Alignment.bottomCenter,
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                LocationCard(
+                  address: '8 Chaniza St, Dar es Salaam, Tanzania',
+                  lastUpdated: 'Now',
                 ),
-                Align(
-                  alignment: Alignment.bottomCenter,
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: LocationCard(
-                      address: '8 Chaniza St, Dar es Salaam, Tanzania',
-                      lastUpdated: 'Now',
-                    ),
-                  ),
-                ),
+                if (authToken != null) ...[
+                  SizedBox(height: 10),
+                  Text('Token: $authToken', style: TextStyle(color: Colors.black)),
+                ],
               ],
             ),
-          );
+          ),
+        ),
+      ],
+    ),
+  );
 
   Future<void> fetchLocationUpdates() async {
     bool serviceEnabled;
     PermissionStatus permissionGranted;
 
     serviceEnabled = await locationController.serviceEnabled();
-    if (serviceEnabled) {
+    if (!serviceEnabled) {
       serviceEnabled = await locationController.requestService();
-    } else {
-      return;
+      if (!serviceEnabled) {
+        return;
+      }
     }
 
     permissionGranted = await locationController.hasPermission();
@@ -99,8 +164,7 @@ class _GoogleMapPageState extends State<GoogleMapPage> {
     }
 
     locationController.onLocationChanged.listen((currentLocation) {
-      if (currentLocation.latitude != null &&
-          currentLocation.longitude != null) {
+      if (currentLocation.latitude != null && currentLocation.longitude != null) {
         setState(() {
           currentPosition = LatLng(
             currentLocation.latitude!,
@@ -115,23 +179,20 @@ class _GoogleMapPageState extends State<GoogleMapPage> {
     final polylinePoints = PolylinePoints();
 
     final result = await polylinePoints.getRouteBetweenCoordinates(
-      googleMapsApiKey,
-      PointLatLng(googlePlex.latitude, googlePlex.longitude),
-      PointLatLng(mountainView.latitude, mountainView.longitude),
+      "AIzaSyDCh7S3cE5ywcFPwfJdOC_R51tLa9a2KY8",
+      PointLatLng(googlePlex!.latitude, googlePlex!.longitude),
+      PointLatLng(mountainView!.latitude, mountainView!.longitude),
     );
 
     if (result.points.isNotEmpty) {
-      return result.points
-          .map((point) => LatLng(point.latitude, point.longitude))
-          .toList();
+      return result.points.map((point) => LatLng(point.latitude, point.longitude)).toList();
     } else {
       debugPrint(result.errorMessage);
       return [];
     }
   }
 
-  Future<void> generatePolyLineFromPoints(
-      List<LatLng> polylineCoordinates) async {
+  Future<void> generatePolyLineFromPoints(List<LatLng> polylineCoordinates) async {
     const id = PolylineId('polyline');
 
     final polyline = Polyline(

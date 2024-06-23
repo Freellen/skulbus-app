@@ -15,6 +15,6 @@ class MyApp extends StatelessWidget {
         theme: ThemeData(primarySwatch: Colors.blue),
         // home: const GoogleMapPage(),
         // home: const Login(),
-        home: const Welcome(),
+        home: Welcome(),
       );
 }
