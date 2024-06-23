@@ -105,9 +105,9 @@ class _GoogleMapPageState extends State<GoogleMapPage> {
         final data = json.decode(response.body);
         if (data.length >= 2) {
           setState(() {
-            busStop1 = data[0]['bus_stop'];
+            busStop1 = data[0]['bus_stop_name'];
             timestamp1 = data[0]['timestamp'];
-            busStop2 = data[1]['bus_stop'];
+            busStop2 = data[1]['bus_stop_name'];
             timestamp2 = data[1]['timestamp'];
           });
         } else {
@@ -280,7 +280,7 @@ class LocationCard extends StatelessWidget {
                     'Enter the Bus $busStop2',
                     style: TextStyle(
                       color: Colors.white,
-                      fontSize: 20,
+                      fontSize: 16,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -294,7 +294,7 @@ class LocationCard extends StatelessWidget {
                     'Exit the Bus $busStop1',
                     style: TextStyle(
                       color: Colors.white,
-                      fontSize: 20,
+                      fontSize: 16,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
