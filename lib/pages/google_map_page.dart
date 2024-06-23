@@ -6,7 +6,7 @@ import 'package:location/location.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 
-import 'print_shared_preferences.dart'; // Add this import
+import 'print_shared_preferences.dart'; // Ensure this import is correct
 
 class GoogleMapPage extends StatefulWidget {
   const GoogleMapPage({Key? key}) : super(key: key);
@@ -22,6 +22,10 @@ class _GoogleMapPageState extends State<GoogleMapPage> {
   LatLng? currentPosition;
   Map<PolylineId, Polyline> polylines = {};
   String? authToken; // Variable to hold the token
+  String busStop1 = '';
+  String timestamp1 = '';
+  String busStop2 = '';
+  String timestamp2 = '';
 
   @override
   void initState() {
@@ -39,6 +43,7 @@ class _GoogleMapPageState extends State<GoogleMapPage> {
         authToken = token; // Save the token to display in the UI
       });
       await fetchCoordinates(token);
+      await fetchLocationData(token); // Fetch location data for LocationCard
       if (googlePlex != null && mountainView != null) {
         await fetchLocationUpdates();
         final coordinates = await fetchPolylinePoints();
@@ -87,6 +92,35 @@ class _GoogleMapPageState extends State<GoogleMapPage> {
     }
   }
 
+  Future<void> fetchLocationData(String token) async {
+    final url = 'http://10.0.2.2:8000/skulbus_api/api/student-trip/';
+    try {
+      final response = await http.get(
+        Uri.parse(url),
+        headers: {
+          'Authorization': 'Token $token',
+        },
+      );
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data.length >= 2) {
+          setState(() {
+            busStop1 = data[0]['bus_stop'];
+            timestamp1 = data[0]['timestamp'];
+            busStop2 = data[1]['bus_stop'];
+            timestamp2 = data[1]['timestamp'];
+          });
+        } else {
+          debugPrint('Insufficient data found');
+        }
+      } else {
+        debugPrint('Failed to load location data');
+      }
+    } catch (e) {
+      debugPrint('Error fetching location data: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(
@@ -128,8 +162,10 @@ class _GoogleMapPageState extends State<GoogleMapPage> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 LocationCard(
-                  address: '8 Chaniza St, Dar es Salaam, Tanzania',
-                  lastUpdated: 'Now',
+                  busStop1: busStop1,
+                  timestamp1: timestamp1,
+                  busStop2: busStop2,
+                  timestamp2: timestamp2,
                 ),
                 if (authToken != null) ...[
                   SizedBox(height: 10),
@@ -179,7 +215,7 @@ class _GoogleMapPageState extends State<GoogleMapPage> {
     final polylinePoints = PolylinePoints();
 
     final result = await polylinePoints.getRouteBetweenCoordinates(
-      "AIzaSyDCh7S3cE5ywcFPwfJdOC_R51tLa9a2KY8",
+      "AIzaSyDCh7S3cE5ywcFPwfJdOC_R51tLa9a2KY8", // Replace with your Google Maps API Key
       PointLatLng(googlePlex!.latitude, googlePlex!.longitude),
       PointLatLng(mountainView!.latitude, mountainView!.longitude),
     );
@@ -207,13 +243,17 @@ class _GoogleMapPageState extends State<GoogleMapPage> {
 }
 
 class LocationCard extends StatelessWidget {
-  final String address;
-  final String lastUpdated;
+  final String busStop1;
+  final String timestamp1;
+  final String busStop2;
+  final String timestamp2;
 
   const LocationCard({
     Key? key,
-    required this.address,
-    required this.lastUpdated,
+    required this.busStop1,
+    required this.timestamp1,
+    required this.busStop2,
+    required this.timestamp2,
   }) : super(key: key);
 
   @override
@@ -237,7 +277,7 @@ class LocationCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Enter the Bus',
+                    'Enter the Bus $busStop2',
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 20,
@@ -246,17 +286,12 @@ class LocationCard extends StatelessWidget {
                   ),
                   SizedBox(height: 4),
                   Text(
-                    address,
-                    style: TextStyle(color: Colors.white70),
-                  ),
-                  SizedBox(height: 4),
-                  Text(
-                    'Timestamp: $lastUpdated',
+                    'Timestamp: $timestamp1',
                     style: TextStyle(color: Colors.white70),
                   ),
                   SizedBox(height: 8),
                   Text(
-                    'Exit the Bus',
+                    'Exit the Bus $busStop1',
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 20,
@@ -265,12 +300,7 @@ class LocationCard extends StatelessWidget {
                   ),
                   SizedBox(height: 4),
                   Text(
-                    address,
-                    style: TextStyle(color: Colors.white70),
-                  ),
-                  SizedBox(height: 4),
-                  Text(
-                    'Timestamp: $lastUpdated',
+                    'Timestamp: $timestamp2',
                     style: TextStyle(color: Colors.white70),
                   ),
                 ],
