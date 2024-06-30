@@ -17,7 +17,7 @@ class Welcome extends StatelessWidget {
           children: [
             ElevatedButton.icon(
               icon: Icon(Icons.ice_skating),
-              label: Text("Driver"),
+              label: Text("Bus"),
               onPressed: () {
                 Navigator.push(
                   context,

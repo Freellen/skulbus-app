@@ -82,7 +82,7 @@ class _LoginState extends State<DriverLogin> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Text(
-                  'Driver Login',
+                  'Bus',
                   style: TextStyle(
                     fontSize: 35,
                     color: Colors.teal,
