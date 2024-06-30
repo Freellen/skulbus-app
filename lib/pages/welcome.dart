@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_map_app/pages/driver_login.dart';
 import 'login.dart';
 
 class Welcome extends StatelessWidget {
@@ -20,7 +21,7 @@ class Welcome extends StatelessWidget {
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => Login()),
+                  MaterialPageRoute(builder: (context) => DriverLogin()),
                 );
               },
               style: ElevatedButton.styleFrom(

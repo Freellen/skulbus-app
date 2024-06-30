@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_map_app/pages/trip.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -6,14 +7,14 @@ import 'dart:convert';
 import 'google_map_page.dart';
 import 'print_shared_preferences.dart'; // Add this import
 
-class Login extends StatefulWidget {
-  const Login({Key? key}) : super(key: key);
+class DriverLogin extends StatefulWidget {
+  const DriverLogin({Key? key}) : super(key: key);
 
   @override
-  State<Login> createState() => _LoginState();
+  State<DriverLogin> createState() => _LoginState();
 }
 
-class _LoginState extends State<Login> {
+class _LoginState extends State<DriverLogin> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
@@ -54,7 +55,7 @@ class _LoginState extends State<Login> {
 
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) => GoogleMapPage()),
+          MaterialPageRoute(builder: (context) => TripPage()),
         );
       } else {
         // Handle error response
@@ -81,7 +82,7 @@ class _LoginState extends State<Login> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Text(
-                  'Parent Login',
+                  'Driver Login',
                   style: TextStyle(
                     fontSize: 35,
                     color: Colors.teal,

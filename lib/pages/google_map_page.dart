@@ -39,9 +39,11 @@ class _GoogleMapPageState extends State<GoogleMapPage> {
   Future<void> initializeMap() async {
     final token = await _retrieveToken();
     if (token != null) {
-      setState(() {
-        authToken = token; // Save the token to display in the UI
-      });
+      if (mounted) {
+        setState(() {
+          authToken = token; // Save the token to display in the UI
+        });
+      }
       await fetchCoordinates(token);
       await fetchLocationData(token); // Fetch location data for LocationCard
       if (googlePlex != null && mountainView != null) {
@@ -71,16 +73,19 @@ class _GoogleMapPageState extends State<GoogleMapPage> {
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data.isNotEmpty) {
-          setState(() {
-            googlePlex = LatLng(
-              double.parse(data[0]['start_latitude']),
-              double.parse(data[0]['start_longitude']),
-            );
-            mountainView = LatLng(
-              double.parse(data[0]['end_latitude']),
-              double.parse(data[0]['end_longitude']),
-            );
-          });
+          if (mounted) {
+            setState(() {
+              googlePlex = LatLng(
+                double.parse(data[0]['start_latitude']),
+                double.parse(data[0]['start_longitude']),
+              );
+              mountainView = LatLng(
+                double.parse(data[0]['end_latitude']),
+                double.parse(data[0]['end_longitude']),
+              );
+            });
+          }
+          debugPrint('googlePlex: $googlePlex, mountainView: $mountainView');
         } else {
           debugPrint('No data found');
         }
@@ -104,12 +109,15 @@ class _GoogleMapPageState extends State<GoogleMapPage> {
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data.length >= 2) {
-          setState(() {
-            busStop1 = data[0]['bus_stop_name'];
-            timestamp1 = data[0]['timestamp'];
-            busStop2 = data[1]['bus_stop_name'];
-            timestamp2 = data[1]['timestamp'];
-          });
+          if (mounted) {
+            setState(() {
+              busStop1 = data[0]['bus_stop_name'];
+              timestamp1 = data[0]['timestamp'];
+              busStop2 = data[1]['bus_stop_name'];
+              timestamp2 = data[1]['timestamp'];
+            });
+          }
+          debugPrint('Location data fetched: busStop1: $busStop1, timestamp1: $timestamp1, busStop2: $busStop2, timestamp2: $timestamp2');
         } else {
           debugPrint('Insufficient data found');
         }
@@ -201,36 +209,45 @@ class _GoogleMapPageState extends State<GoogleMapPage> {
 
     locationController.onLocationChanged.listen((currentLocation) {
       if (currentLocation.latitude != null && currentLocation.longitude != null) {
-        setState(() {
-          currentPosition = LatLng(
-            currentLocation.latitude!,
-            currentLocation.longitude!,
-          );
-        });
+        if (mounted) {
+          setState(() {
+            currentPosition = LatLng(
+              currentLocation.latitude!,
+              currentLocation.longitude!,
+            );
+          });
+        }
+        debugPrint('Current position updated: $currentPosition');
       }
     });
   }
 
   Future<List<LatLng>> fetchPolylinePoints() async {
     final polylinePoints = PolylinePoints();
+    final String googleAPIKey = "AIzaSyDCh7S3cE5ywcFPwfJdOC_R51tLa9a2KY8"; // Replace with your Google Maps API Key
 
     final result = await polylinePoints.getRouteBetweenCoordinates(
-      "AIzaSyDCh7S3cE5ywcFPwfJdOC_R51tLa9a2KY8", // Replace with your Google Maps API Key
+      googleAPIKey,
       PointLatLng(googlePlex!.latitude, googlePlex!.longitude),
       PointLatLng(mountainView!.latitude, mountainView!.longitude),
     );
 
     if (result.points.isNotEmpty) {
+      debugPrint('Polyline points fetched: ${result.points}');
       return result.points.map((point) => LatLng(point.latitude, point.longitude)).toList();
     } else {
-      debugPrint(result.errorMessage);
+      debugPrint('Error fetching polyline points: ${result.errorMessage}');
       return [];
     }
   }
 
-  Future<void> generatePolyLineFromPoints(List<LatLng> polylineCoordinates) async {
-    const id = PolylineId('polyline');
+  void generatePolyLineFromPoints(List<LatLng> polylineCoordinates) {
+    if (polylineCoordinates.isEmpty) {
+      debugPrint('No polyline coordinates to display');
+      return;
+    }
 
+    final id = PolylineId('polyline');
     final polyline = Polyline(
       polylineId: id,
       color: Colors.blueAccent,
@@ -238,7 +255,13 @@ class _GoogleMapPageState extends State<GoogleMapPage> {
       width: 5,
     );
 
-    setState(() => polylines[id] = polyline);
+    if (mounted) {
+      setState(() {
+        polylines[id] = polyline;
+      });
+    }
+
+    debugPrint('Polyline added: $polyline');
   }
 }
 
